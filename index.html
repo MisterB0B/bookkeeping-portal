@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bookkeeping Portal | The Light Park</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --bg: #0B0D14;
+      --surface: #12151F;
+      --surface2: #1a1e2e;
+      --border: #2a2f42;
+      --text: #f0f0f5;
+      --text-dim: #8888a0;
+      --purple: #a855f7;
+      --teal: #06d6a0;
+      --green: #22c55e;
+      --yellow: #eab308;
+      --orange: #f97316;
+      --red: #ef4444;
+      --blue: #3b82f6;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    
+    .header {
+      background: linear-gradient(135deg, var(--purple), var(--teal));
+      padding: 20px;
+      text-align: center;
+    }
+    .header h1 { font-size: 24px; font-weight: 800; }
+    .header p { opacity: 0.9; font-size: 13px; margin-top: 4px; }
+    
+    .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+    
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .tab {
+      padding: 12px 20px;
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-dim);
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab:hover { border-color: var(--purple); color: var(--text); }
+    .tab.active { border-color: var(--teal); background: rgba(6,214,160,0.1); color: var(--text); }
+    
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    
+    /* Cards */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .stat-card h3 { font-size: 13px; color: var(--text-dim); margin-bottom: 8px; }
+    .stat-card .value {
+      font-size: 32px;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--purple), var(--teal));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .stat-card .sub { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+    
+    /* Section */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .section-header h2 { font-size: 18px; }
+    
+    /* Buttons */
+    .btn {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--purple), var(--teal));
+      color: #fff;
+    }
+    .btn-primary:hover { transform: scale(1.02); }
+    .btn-secondary {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { border-color: var(--purple); }
+    .btn-success {
+      background: rgba(34,197,94,0.2);
+      color: var(--green);
+      border: 1px solid rgba(34,197,94,0.3);
+    }
+    
+    /* Table */
+    .table-wrapper { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th {
+      text-align: left;
+      padding: 12px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+      color: var(--text-dim);
+      white-space: nowrap;
+    }
+    td {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    tr:hover { background: rgba(168,85,247,0.05); }
+    
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .badge-pending { background: rgba(234,179,8,0.2); color: var(--yellow); }
+    .badge-approved { background: rgba(34,197,94,0.2); color: var(--green); }
+    .badge-paid { background: rgba(59,130,246,0.2); color: var(--blue); }
+    
+    /* Filters */
+    .filters {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .filter-group { display: flex; flex-direction: column; gap: 4px; }
+    .filter-group label { font-size: 12px; color: var(--text-dim); }
+    .filter-group select, .filter-group input {
+      padding: 8px 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 14px;
+    }
+    
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--surface);
+      border: 1px solid var(--teal);
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-size: 14px;
+      z-index: 1000;
+      opacity: 0;
+      transition: all 0.3s;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    
+    /* Date range */
+    .date-range {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    @media (max-width: 768px) {
+      .tabs { gap: 4px; }
+      .tab { padding: 10px 14px; font-size: 12px; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .stat-card .value { font-size: 24px; }
+      th, td { padding: 8px; font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📊 Bookkeeping Portal</h1>
+    <p>Employee Reports • Influencer Payouts • Upsell Rewards</p>
+  </div>
+  
+  <div class="container">
+    <!-- Tabs -->
+    <div class="tabs">
+      <div class="tab active" data-tab="overview">📊 Overview</div>
+      <div class="tab" data-tab="employees">👥 Employee Hours</div>
+      <div class="tab" data-tab="influencers">🎬 Influencer Payouts</div>
+      <div class="tab" data-tab="rewards">🏆 Upsell Rewards</div>
+      <div class="tab" data-tab="exports">📥 Export Reports</div>
+    </div>
+    
+    <!-- OVERVIEW TAB -->
+    <div class="tab-content active" id="tab-overview">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <h3>Total Payroll (Period)</h3>
+          <div class="value" id="totalPayroll">$0</div>
+          <div class="sub">Employee hours × rates</div>
+        </div>
+        <div class="stat-card">
+          <h3>Influencer Payouts</h3>
+          <div class="value" id="totalInfluencer">$0</div>
+          <div class="sub">Pending + approved</div>
+        </div>
+        <div class="stat-card">
+          <h3>Upsell Rewards</h3>
+          <div class="value" id="totalRewards">$0</div>
+          <div class="sub">Employee commissions</div>
+        </div>
+        <div class="stat-card">
+          <h3>Total Obligations</h3>
+          <div class="value" id="totalAll">$0</div>
+          <div class="sub">All payables</div>
+        </div>
+      </div>
+      
+      <div class="section">
+        <div class="section-header">
+          <h2>📅 Reporting Period</h2>
+        </div>
+        <div class="date-range">
+          <div class="filter-group">
+            <label>From</label>
+            <input type="date" id="dateFrom" value="">
+          </div>
+          <div class="filter-group">
+            <label>To</label>
+            <input type="date" id="dateTo" value="">
+          </div>
+          <button class="btn btn-secondary" onclick="updatePeriod()">Update</button>
+        </div>
+      </div>
+      
+      <div class="section">
+        <div class="section-header">
+          <h2>⚡ Quick Actions</h2>
+        </div>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+          <button class="btn btn-primary" onclick="exportAll()">📥 Export All to Excel</button>
+          <button class="btn btn-secondary" onclick="switchTab('employees')">👥 View Employee Hours</button>
+          <button class="btn btn-secondary" onclick="switchTab('influencers')">🎬 View Influencer Payouts</button>
+          <button class="btn btn-secondary" onclick="switchTab('rewards')">🏆 View Upsell Rewards</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- EMPLOYEES TAB -->
+    <div class="tab-content" id="tab-employees">
+      <div class="section">
+        <div class="section-header">
+          <h2>👥 Employee Hours Report</h2>
+          <button class="btn btn-success" onclick="exportEmployees()">📥 Export to Excel</button>
+        </div>
+        
+        <div class="filters">
+          <div class="filter-group">
+            <label>Venue</label>
+            <select id="empVenueFilter" onchange="renderEmployees()">
+              <option value="">All Venues</option>
+              <option value="Katy">Katy</option>
+              <option value="Spring">Spring</option>
+              <option value="Selma">Selma</option>
+              <option value="Missions">Missions</option>
+              <option value="Arlington">Arlington</option>
+              <option value="Frisco">Frisco</option>
+              <option value="Round Rock">Round Rock</option>
+              <option value="OKC">OKC</option>
+              <option value="Warehouse">Warehouse</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Status</label>
+            <select id="empStatusFilter" onchange="renderEmployees()">
+              <option value="">All</option>
+              <option value="pending">Pending Approval</option>
+              <option value="approved">Approved</option>
+              <option value="paid">Paid</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th>Role</th>
+                <th>Venue</th>
+                <th>Hours</th>
+                <th>Rate</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="employeesTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+    <!-- INFLUENCERS TAB -->
+    <div class="tab-content" id="tab-influencers">
+      <div class="section">
+        <div class="section-header">
+          <h2>🎬 Influencer Payouts</h2>
+          <button class="btn btn-success" onclick="exportInfluencers()">📥 Export to Excel</button>
+        </div>
+        
+        <div class="filters">
+          <div class="filter-group">
+            <label>Status</label>
+            <select id="infStatusFilter" onchange="renderInfluencers()">
+              <option value="">All</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="paid">Paid</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Creator</th>
+                <th>Handle</th>
+                <th>Platform</th>
+                <th>Videos</th>
+                <th>Total Views</th>
+                <th>Earned</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="influencersTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+    <!-- REWARDS TAB -->
+    <div class="tab-content" id="tab-rewards">
+      <div class="section">
+        <div class="section-header">
+          <h2>🏆 Tent Upsell Rewards</h2>
+          <button class="btn btn-success" onclick="exportRewards()">📥 Export to Excel</button>
+        </div>
+        
+        <p style="color: var(--text-dim); margin-bottom: 16px; font-size: 14px;">
+          Employee commissions from tent merchandise and add-on upsells.
+        </p>
+        
+        <div class="filters">
+          <div class="filter-group">
+            <label>Venue</label>
+            <select id="rewardVenueFilter" onchange="renderRewards()">
+              <option value="">All Venues</option>
+              <option value="Katy">Katy</option>
+              <option value="Spring">Spring</option>
+              <option value="Selma">Selma</option>
+              <option value="Missions">Missions</option>
+              <option value="Arlington">Arlington</option>
+              <option value="Frisco">Frisco</option>
+              <option value="Round Rock">Round Rock</option>
+              <option value="OKC">OKC</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Status</label>
+            <select id="rewardStatusFilter" onchange="renderRewards()">
+              <option value="">All</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="paid">Paid</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th>Venue</th>
+                <th>Date</th>
+                <th>Upsells</th>
+                <th>Sales Total</th>
+                <th>Commission</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="rewardsTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+    <!-- EXPORTS TAB -->
+    <div class="tab-content" id="tab-exports">
+      <div class="section">
+        <div class="section-header">
+          <h2>📥 Export Reports</h2>
+        </div>
+        
+        <p style="color: var(--text-dim); margin-bottom: 20px;">
+          Export data as .xlsx files for import into QuickBooks, Xero, or other bookkeeping software.
+        </p>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+          <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px;">
+            <h3 style="font-size: 16px; margin-bottom: 8px;">👥 Employee Hours</h3>
+            <p style="font-size: 13px; color: var(--text-dim); margin-bottom: 12px;">All employee timesheets for the selected period.</p>
+            <button class="btn btn-primary" onclick="exportEmployees()">Download .xlsx</button>
+          </div>
+          
+          <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px;">
+            <h3 style="font-size: 16px; margin-bottom: 8px;">🎬 Influencer Payouts</h3>
+            <p style="font-size: 13px; color: var(--text-dim); margin-bottom: 12px;">Creator earnings from video performance.</p>
+            <button class="btn btn-primary" onclick="exportInfluencers()">Download .xlsx</button>
+          </div>
+          
+          <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px;">
+            <h3 style="font-size: 16px; margin-bottom: 8px;">🏆 Upsell Rewards</h3>
+            <p style="font-size: 13px; color: var(--text-dim); margin-bottom: 12px;">Employee commissions from tent upsells.</p>
+            <button class="btn btn-primary" onclick="exportRewards()">Download .xlsx</button>
+          </div>
+          
+          <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px;">
+            <h3 style="font-size: 16px; margin-bottom: 8px;">📊 Complete Report</h3>
+            <p style="font-size: 13px; color: var(--text-dim); margin-bottom: 12px;">All data in one workbook (multiple sheets).</p>
+            <button class="btn btn-primary" onclick="exportAll()">Download .xlsx</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="toast" id="toast"></div>
+  
+  <script>
+    // Sample data (will connect to real data sources)
+    let employees = [
+      { id: 1, name: 'Maria Garcia', role: 'Tent Manager', venue: 'Katy', hours: 42, rate: 18, status: 'approved' },
+      { id: 2, name: 'James Wilson', role: 'Tent Staff', venue: 'Katy', hours: 38, rate: 14, status: 'pending' },
+      { id: 3, name: 'Sarah Chen', role: 'Mascot', venue: 'Spring', hours: 28, rate: 16, status: 'approved' },
+      { id: 4, name: 'Mike Johnson', role: 'Tent Manager', venue: 'Selma', hours: 45, rate: 18, status: 'paid' },
+      { id: 5, name: 'Emily Davis', role: 'Tent Staff', venue: 'Arlington', hours: 35, rate: 14, status: 'pending' },
+      { id: 6, name: 'Carlos Rodriguez', role: 'Tech', venue: 'Warehouse', hours: 50, rate: 22, status: 'approved' },
+    ];
+    
+    let influencers = [
+      { id: 1, name: 'Jessica Smith', handle: '@jessvisits', platform: 'TikTok', videos: 3, views: 125000, earned: 375, status: 'approved' },
+      { id: 2, name: 'Ryan Taylor', handle: '@ryanlights', platform: 'Instagram', videos: 2, views: 45000, earned: 135, status: 'pending' },
+      { id: 3, name: 'Amanda Lee', handle: '@amandatravels', platform: 'TikTok', videos: 5, views: 890000, earned: 2670, status: 'paid' },
+      { id: 4, name: 'Chris Martin', handle: '@chrisexplores', platform: 'YouTube', videos: 1, views: 28000, earned: 140, status: 'pending' },
+    ];
+    
+    let rewards = [
+      { id: 1, employee: 'Maria Garcia', venue: 'Katy', date: '2025-12-15', upsells: 24, salesTotal: 480, commission: 48, status: 'approved' },
+      { id: 2, employee: 'James Wilson', venue: 'Katy', date: '2025-12-15', upsells: 18, salesTotal: 360, commission: 36, status: 'pending' },
+      { id: 3, employee: 'Mike Johnson', venue: 'Selma', date: '2025-12-16', upsells: 31, salesTotal: 620, commission: 62, status: 'paid' },
+      { id: 4, employee: 'Emily Davis', venue: 'Arlington', date: '2025-12-14', upsells: 12, salesTotal: 240, commission: 24, status: 'pending' },
+    ];
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      // Set default date range (last 30 days)
+      const today = new Date();
+      const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+      document.getElementById('dateFrom').value = thirtyDaysAgo.toISOString().split('T')[0];
+      document.getElementById('dateTo').value = today.toISOString().split('T')[0];
+      
+      updateStats();
+      renderEmployees();
+      renderInfluencers();
+      renderRewards();
+    });
+    
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+    });
+    
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + tabName));
+    }
+    
+    // Update stats
+    function updateStats() {
+      const totalPayroll = employees.reduce((sum, e) => sum + (e.hours * e.rate), 0);
+      const totalInfluencer = influencers.reduce((sum, i) => sum + i.earned, 0);
+      const totalRewards = rewards.reduce((sum, r) => sum + r.commission, 0);
+      
+      document.getElementById('totalPayroll').textContent = '$' + totalPayroll.toLocaleString();
+      document.getElementById('totalInfluencer').textContent = '$' + totalInfluencer.toLocaleString();
+      document.getElementById('totalRewards').textContent = '$' + totalRewards.toLocaleString();
+      document.getElementById('totalAll').textContent = '$' + (totalPayroll + totalInfluencer + totalRewards).toLocaleString();
+    }
+    
+    // Render employees
+    function renderEmployees() {
+      const venueFilter = document.getElementById('empVenueFilter').value;
+      const statusFilter = document.getElementById('empStatusFilter').value;
+      
+      let filtered = employees.filter(e => {
+        if (venueFilter && e.venue !== venueFilter) return false;
+        if (statusFilter && e.status !== statusFilter) return false;
+        return true;
+      });
+      
+      const tbody = document.getElementById('employeesTable');
+      tbody.innerHTML = filtered.map(e => `
+        <tr>
+          <td><strong>${e.name}</strong></td>
+          <td>${e.role}</td>
+          <td>${e.venue}</td>
+          <td>${e.hours}</td>
+          <td>$${e.rate}/hr</td>
+          <td><strong>$${(e.hours * e.rate).toLocaleString()}</strong></td>
+          <td><span class="badge badge-${e.status}">${e.status.charAt(0).toUpperCase() + e.status.slice(1)}</span></td>
+          <td>
+            ${e.status === 'pending' ? `<button class="btn btn-secondary" onclick="approveEmployee(${e.id})" style="padding: 6px 10px; font-size: 12px;">Approve</button>` : ''}
+            ${e.status === 'approved' ? `<button class="btn btn-success" onclick="markPaid(${e.id}, 'employee')" style="padding: 6px 10px; font-size: 12px;">Mark Paid</button>` : ''}
+          </td>
+        </tr>
+      `).join('');
+    }
+    
+    // Render influencers
+    function renderInfluencers() {
+      const statusFilter = document.getElementById('infStatusFilter').value;
+      
+      let filtered = influencers.filter(i => {
+        if (statusFilter && i.status !== statusFilter) return false;
+        return true;
+      });
+      
+      const tbody = document.getElementById('influencersTable');
+      tbody.innerHTML = filtered.map(i => `
+        <tr>
+          <td><strong>${i.name}</strong></td>
+          <td>${i.handle}</td>
+          <td>${i.platform}</td>
+          <td>${i.videos}</td>
+          <td>${i.views.toLocaleString()}</td>
+          <td><strong>$${i.earned.toLocaleString()}</strong></td>
+          <td><span class="badge badge-${i.status}">${i.status.charAt(0).toUpperCase() + i.status.slice(1)}</span></td>
+          <td>
+            ${i.status === 'pending' ? `<button class="btn btn-secondary" onclick="approveInfluencer(${i.id})" style="padding: 6px 10px; font-size: 12px;">Approve</button>` : ''}
+            ${i.status === 'approved' ? `<button class="btn btn-success" onclick="markPaid(${i.id}, 'influencer')" style="padding: 6px 10px; font-size: 12px;">Mark Paid</button>` : ''}
+          </td>
+        </tr>
+      `).join('');
+    }
+    
+    // Render rewards
+    function renderRewards() {
+      const venueFilter = document.getElementById('rewardVenueFilter').value;
+      const statusFilter = document.getElementById('rewardStatusFilter').value;
+      
+      let filtered = rewards.filter(r => {
+        if (venueFilter && r.venue !== venueFilter) return false;
+        if (statusFilter && r.status !== statusFilter) return false;
+        return true;
+      });
+      
+      const tbody = document.getElementById('rewardsTable');
+      tbody.innerHTML = filtered.map(r => `
+        <tr>
+          <td><strong>${r.employee}</strong></td>
+          <td>${r.venue}</td>
+          <td>${r.date}</td>
+          <td>${r.upsells}</td>
+          <td>$${r.salesTotal.toLocaleString()}</td>
+          <td><strong>$${r.commission.toLocaleString()}</strong></td>
+          <td><span class="badge badge-${r.status}">${r.status.charAt(0).toUpperCase() + r.status.slice(1)}</span></td>
+          <td>
+            ${r.status === 'pending' ? `<button class="btn btn-secondary" onclick="approveReward(${r.id})" style="padding: 6px 10px; font-size: 12px;">Approve</button>` : ''}
+            ${r.status === 'approved' ? `<button class="btn btn-success" onclick="markPaid(${r.id}, 'reward')" style="padding: 6px 10px; font-size: 12px;">Mark Paid</button>` : ''}
+          </td>
+        </tr>
+      `).join('');
+    }
+    
+    // Approve functions
+    function approveEmployee(id) {
+      const emp = employees.find(e => e.id === id);
+      if (emp) { emp.status = 'approved'; renderEmployees(); updateStats(); showToast('Employee hours approved'); }
+    }
+    
+    function approveInfluencer(id) {
+      const inf = influencers.find(i => i.id === id);
+      if (inf) { inf.status = 'approved'; renderInfluencers(); updateStats(); showToast('Influencer payout approved'); }
+    }
+    
+    function approveReward(id) {
+      const reward = rewards.find(r => r.id === id);
+      if (reward) { reward.status = 'approved'; renderRewards(); updateStats(); showToast('Reward approved'); }
+    }
+    
+    function markPaid(id, type) {
+      if (type === 'employee') {
+        const emp = employees.find(e => e.id === id);
+        if (emp) { emp.status = 'paid'; renderEmployees(); }
+      } else if (type === 'influencer') {
+        const inf = influencers.find(i => i.id === id);
+        if (inf) { inf.status = 'paid'; renderInfluencers(); }
+      } else if (type === 'reward') {
+        const reward = rewards.find(r => r.id === id);
+        if (reward) { reward.status = 'paid'; renderRewards(); }
+      }
+      updateStats();
+      showToast('Marked as paid');
+    }
+    
+    // Export functions
+    function exportEmployees() {
+      const data = employees.map(e => ({
+        'Employee Name': e.name,
+        'Role': e.role,
+        'Venue': e.venue,
+        'Hours': e.hours,
+        'Rate': e.rate,
+        'Total': e.hours * e.rate,
+        'Status': e.status
+      }));
+      downloadExcel(data, 'Employee_Hours_Report');
+    }
+    
+    function exportInfluencers() {
+      const data = influencers.map(i => ({
+        'Creator Name': i.name,
+        'Handle': i.handle,
+        'Platform': i.platform,
+        'Videos': i.videos,
+        'Total Views': i.views,
+        'Amount Earned': i.earned,
+        'Status': i.status
+      }));
+      downloadExcel(data, 'Influencer_Payouts_Report');
+    }
+    
+    function exportRewards() {
+      const data = rewards.map(r => ({
+        'Employee': r.employee,
+        'Venue': r.venue,
+        'Date': r.date,
+        'Upsells': r.upsells,
+        'Sales Total': r.salesTotal,
+        'Commission': r.commission,
+        'Status': r.status
+      }));
+      downloadExcel(data, 'Upsell_Rewards_Report');
+    }
+    
+    function exportAll() {
+      const wb = XLSX.utils.book_new();
+      
+      // Employees sheet
+      const empData = employees.map(e => ({
+        'Employee Name': e.name, 'Role': e.role, 'Venue': e.venue,
+        'Hours': e.hours, 'Rate': e.rate, 'Total': e.hours * e.rate, 'Status': e.status
+      }));
+      const empSheet = XLSX.utils.json_to_sheet(empData);
+      XLSX.utils.book_append_sheet(wb, empSheet, 'Employee Hours');
+      
+      // Influencers sheet
+      const infData = influencers.map(i => ({
+        'Creator Name': i.name, 'Handle': i.handle, 'Platform': i.platform,
+        'Videos': i.videos, 'Total Views': i.views, 'Amount Earned': i.earned, 'Status': i.status
+      }));
+      const infSheet = XLSX.utils.json_to_sheet(infData);
+      XLSX.utils.book_append_sheet(wb, infSheet, 'Influencer Payouts');
+      
+      // Rewards sheet
+      const rewardData = rewards.map(r => ({
+        'Employee': r.employee, 'Venue': r.venue, 'Date': r.date,
+        'Upsells': r.upsells, 'Sales Total': r.salesTotal, 'Commission': r.commission, 'Status': r.status
+      }));
+      const rewardSheet = XLSX.utils.json_to_sheet(rewardData);
+      XLSX.utils.book_append_sheet(wb, rewardSheet, 'Upsell Rewards');
+      
+      // Summary sheet
+      const summaryData = [{
+        'Category': 'Employee Payroll',
+        'Total': employees.reduce((sum, e) => sum + (e.hours * e.rate), 0)
+      }, {
+        'Category': 'Influencer Payouts',
+        'Total': influencers.reduce((sum, i) => sum + i.earned, 0)
+      }, {
+        'Category': 'Upsell Rewards',
+        'Total': rewards.reduce((sum, r) => sum + r.commission, 0)
+      }];
+      const summarySheet = XLSX.utils.json_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(wb, summarySheet, 'Summary');
+      
+      const dateStr = new Date().toISOString().split('T')[0];
+      XLSX.writeFile(wb, `LightPark_Bookkeeping_${dateStr}.xlsx`);
+      showToast('Complete report exported!');
+    }
+    
+    function downloadExcel(data, filename) {
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Report');
+      const dateStr = new Date().toISOString().split('T')[0];
+      XLSX.writeFile(wb, `${filename}_${dateStr}.xlsx`);
+      showToast('Excel file downloaded!');
+    }
+    
+    function updatePeriod() {
+      showToast('Period updated');
+      // In real app, would filter data by date range
+    }
+    
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+  </script>
+</body>
+</html>
